@@ -1,0 +1,12 @@
+﻿fastapi==0.139.0
+uvicorn==0.50.2
+streamlit==1.59.2
+requests==2.34.2
+plotly==6.9.0
+joblib==1.5.3
+pandas==3.0.3
+numpy==2.4.6
+scikit-learn==1.6.1
+xgboost==3.3.0
+shap==0.52.0
+pydantic==2.13.4

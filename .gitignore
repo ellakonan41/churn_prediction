@@ -1,0 +1,17 @@
+# Environnement Python
+mlops/
+
+# Cache Python
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Données
+data/raw/
+data/processed/
+
+# Fichiers système
+.DS_Store
+Thumbs.db
