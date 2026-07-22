@@ -4,10 +4,13 @@ from src.predictor import predict_churn
 from time import perf_counter
 
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/predict",
+    tags=["Prediction"]
+    )
 
 
-@router.post("/predict")
+@router.post("")
 def predict(customer: Customer):
 
     start_time = perf_counter()

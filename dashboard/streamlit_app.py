@@ -1,7 +1,22 @@
+
+import sys
+import os
+
+sys.path.append(
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..")
+    )
+)
 import streamlit as st
 import requests
 import plotly.graph_objects as go
 from src.explanability import get_feature_importance
+
+
+API_URL = os.getenv(
+    "API_URL",
+    "http://localhost:8000"
+)
 
 st.set_page_config(page_title="Customer Churn Prediction", page_icon="📞", layout="wide")
 st.title("Customer Churn Prediction")
@@ -138,7 +153,7 @@ customer = {
 if predict:
 
     response = requests.post(
-        "http://api:8000/predict",
+        f"{API_URL}/predict",
         json = customer
     )
 
