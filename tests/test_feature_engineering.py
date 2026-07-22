@@ -1,8 +1,11 @@
-from src.predictor import predict_churn
-from src.explanability import get_feature_importance
+import pandas as pd
+
+from src.feature_engineering import create_features
 
 
-client = {
+def test_create_features():
+
+    customer = pd.DataFrame([{
     "gender": "Male",
     "SeniorCitizen": 0,
     'Partner': "No",
@@ -22,13 +25,11 @@ client = {
     "PaymentMethod": "Electronic check",
     "MonthlyCharges": 80,
     "TotalCharges": 400
-}
+    }])
 
+    result = create_features(customer)
 
-result = predict_churn(client)
-
-print(f"Prediction: {result}")
-
-importance = get_feature_importance(client)
-
-print(f"features: {importance}")
+    assert "tenure_segment" in result.columns
+    assert "avg_monthly_spend" in result.columns
+    assert "service_count" in result.columns
+    assert "risk_score" in result.columns
