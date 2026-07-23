@@ -2,8 +2,8 @@
 uvicorn==0.50.2
 streamlit==1.59.2
 requests==2.34.2
-#plotly==6.9.0
-plotly
+plotly==6.9.0
+#plotly
 joblib==1.5.3
 pandas==3.0.3
 numpy==2.4.6
