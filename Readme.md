@@ -169,7 +169,7 @@ docker compose up --build
 
 ## 👤 Author
 
-**Your Name**
+**Ella Konan**
 
 GitHub: https://github.com/ellakonan41
 
