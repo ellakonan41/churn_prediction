@@ -10,6 +10,7 @@ sys.path.append(
 import streamlit as st
 import requests
 import plotly.graph_objects as go
+
 from src.explanability import get_feature_importance
 
 
@@ -21,6 +22,9 @@ API_URL = os.getenv(
     "API_URL",
     "http://localhost:8000"
 )
+
+CLASSIFICATION_THRESHOLD = 0.40
+
 
 st.set_page_config(
     page_title="Customer Churn Intelligence",
@@ -53,9 +57,15 @@ st.divider()
 
 st.header("👤 Customer Profile")
 
-# ---------- PERSONAL INFORMATION ----------
 
-with st.expander("👤 Personal Information", expanded=True):
+# ------------------------------------------------------------
+# PERSONAL INFORMATION
+# ------------------------------------------------------------
+
+with st.expander(
+    "👤 Personal Information",
+    expanded=True
+):
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -84,9 +94,14 @@ with st.expander("👤 Personal Information", expanded=True):
         )
 
 
-# ---------- SERVICES ----------
+# ------------------------------------------------------------
+# SERVICES
+# ------------------------------------------------------------
 
-with st.expander("📡 Services", expanded=True):
+with st.expander(
+    "📡 Services",
+    expanded=True
+):
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -149,9 +164,14 @@ with st.expander("📡 Services", expanded=True):
         )
 
 
-# ---------- ACCOUNT ----------
+# ------------------------------------------------------------
+# ACCOUNT INFORMATION
+# ------------------------------------------------------------
 
-with st.expander("💳 Account Information", expanded=True):
+with st.expander(
+    "💳 Account Information",
+    expanded=True
+):
 
     col1, col2, col3, col4 = st.columns(4)
 
@@ -214,7 +234,7 @@ col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     predict = st.button(
         "🔮 Predict Customer Churn",
-        use_container_width=True
+        width="stretch"
     )
 
 
@@ -248,6 +268,10 @@ if predict:
 
     try:
 
+        # ----------------------------------------------------
+        # API CALL
+        # ----------------------------------------------------
+
         response = requests.post(
             f"{API_URL}/predict",
             json=customer,
@@ -258,12 +282,29 @@ if predict:
 
         result = response.json()
 
-        probability = result["churn_probability"]
-        prediction = result["churn_prediction"]
+        probability = float(
+            result["churn_probability"]
+        )
 
-        # ====================================================
+        prediction = int(
+            result["churn_prediction"]
+        )
+
+        # ----------------------------------------------------
+        # SHAP EXPLANATION
+        # ----------------------------------------------------
+
+        shap_result = get_feature_importance(
+            customer
+        )
+
+        explanation = shap_result[
+            "top_features"
+        ]
+
+        # ----------------------------------------------------
         # RESULT
-        # ====================================================
+        # ----------------------------------------------------
 
         st.divider()
         st.header("📊 Analysis Result")
@@ -271,7 +312,7 @@ if predict:
         col1, col2 = st.columns([1, 2])
 
         # ----------------------------------------------------
-        # GAUGE
+        # PROBABILITY GAUGE
         # ----------------------------------------------------
 
         with col1:
@@ -294,7 +335,7 @@ if predict:
                             "line": {
                                 "width": 4
                             },
-                            "value": 50
+                            "value": CLASSIFICATION_THRESHOLD * 100
                         }
                     }
                 )
@@ -312,8 +353,14 @@ if predict:
 
             st.plotly_chart(
                 fig,
-                use_container_width=True
+                width="stretch"
             )
+
+            st.caption(
+                f"Classification threshold: "
+                f"{CLASSIFICATION_THRESHOLD:.0%}"
+            )
+
 
         # ----------------------------------------------------
         # RISK CARD
@@ -330,7 +377,7 @@ if predict:
 
                 st.markdown(
                     """
-                    **Recommended action**
+                    **🎯 Recommended action**
 
                     Consider targeting this customer with a
                     retention campaign.
@@ -346,7 +393,7 @@ if predict:
 
                 st.markdown(
                     """
-                    **Recommended action**
+                    **🎯 Recommended action**
 
                     No immediate retention action is required.
                     """
@@ -359,7 +406,9 @@ if predict:
 
         st.divider()
 
-        st.subheader("👤 Customer Summary")
+        st.subheader(
+            "👤 Customer Summary"
+        )
 
         col1, col2, col3, col4 = st.columns(4)
 
@@ -389,7 +438,7 @@ if predict:
 
 
         # ====================================================
-        # SHAP EXPLANATION
+        # WHY THIS PREDICTION?
         # ====================================================
 
         st.divider()
@@ -398,9 +447,45 @@ if predict:
             "🔍 Why this prediction?"
         )
 
-        explanation = get_feature_importance(
-            customer
+        st.caption(
+            "The model considers all customer characteristics. "
+            "The five factors below have the strongest individual "
+            "impact on this prediction."
         )
+
+
+        # ----------------------------------------------------
+        # OVERALL DRIVERS
+        # ----------------------------------------------------
+
+        positive_sum = shap_result[
+            "positive_sum"
+        ]
+
+        negative_sum = shap_result[
+            "negative_sum"
+        ]
+
+        driver_col1, driver_col2 = st.columns(2)
+
+        with driver_col1:
+
+            st.metric(
+                "🔴 Increasing churn risk",
+                f"+{positive_sum:.2f}"
+            )
+
+        with driver_col2:
+
+            st.metric(
+                "🟢 Reducing churn risk",
+                f"{negative_sum:.2f}"
+            )
+
+
+        # ----------------------------------------------------
+        # TOP 5 BAR CHART
+        # ----------------------------------------------------
 
         fig2 = go.Figure(
             go.Bar(
@@ -415,7 +500,7 @@ if predict:
         )
 
         fig2.update_layout(
-            title="Main factors influencing the prediction",
+            title="Top 5 factors influencing this customer",
             xaxis_title="SHAP contribution",
             yaxis_title="Feature",
             height=400,
@@ -429,37 +514,148 @@ if predict:
 
         st.plotly_chart(
             fig2,
-            use_container_width=True
+            width="stretch"
         )
 
 
-        # ====================================================
-        # INTERPRETATION
-        # ====================================================
+        # ----------------------------------------------------
+        # HUMAN-READABLE FACTORS
+        # ----------------------------------------------------
 
-        st.subheader(
-            "💡 Prediction Insights"
-        )
+        col1, col2 = st.columns(2)
 
-        for _, row in explanation.iterrows():
+        positive_features = explanation[
+            explanation["shap_value"] > 0
+        ]
 
-            if row["shap_value"] > 0:
+        negative_features = explanation[
+            explanation["shap_value"] < 0
+        ]
+
+
+        with col1:
+
+            st.markdown(
+                "### 🔴 Factors increasing churn risk"
+            )
+
+            if positive_features.empty:
 
                 st.write(
-                    f"🔴 **{row['feature']}** "
-                    f"increases churn risk "
-                    f"(+{row['shap_value']:.2f})"
+                    "No major risk-increasing factors "
+                    "among the top 5."
                 )
 
             else:
 
+                for _, row in positive_features.iterrows():
+
+                    st.write(
+                        f"🔴 **{row['feature']}** "
+                        f"(+{row['shap_value']:.2f})"
+                    )
+
+
+        with col2:
+
+            st.markdown(
+                "### 🟢 Factors reducing churn risk"
+            )
+
+            if negative_features.empty:
+
                 st.write(
-                    f"🟢 **{row['feature']}** "
-                    f"reduces churn risk "
-                    f"({row['shap_value']:.2f})"
+                    "No major risk-reducing factors "
+                    "among the top 5."
                 )
 
-    except requests.exceptions.RequestException as e:
+            else:
+
+                for _, row in negative_features.iterrows():
+
+                    st.write(
+                        f"🟢 **{row['feature']}** "
+                        f"({row['shap_value']:.2f})"
+                    )
+
+
+        # ====================================================
+        # TECHNICAL SHAP DETAILS
+        # ====================================================
+
+        with st.expander(
+            "🔬 Technical SHAP details"
+        ):
+
+            model_probability = shap_result[
+                "model_probability"
+            ]
+
+            reconstructed_probability = shap_result[
+                "reconstructed_probability"
+            ]
+
+            difference = abs(
+                model_probability
+                - reconstructed_probability
+            )
+
+            st.write(
+                f"**Model probability:** "
+                f"{model_probability:.2%}"
+            )
+
+            st.write(
+                f"**SHAP reconstructed probability:** "
+                f"{reconstructed_probability:.2%}"
+            )
+
+            st.write(
+                f"**Difference:** "
+                f"{difference:.6f}"
+            )
+
+            st.write(
+                f"**Expected value:** "
+                f"{shap_result['expected_value']:.4f}"
+            )
+
+            st.write(
+                f"**Positive SHAP contribution:** "
+                f"+{positive_sum:.4f}"
+            )
+
+            st.write(
+                f"**Negative SHAP contribution:** "
+                f"{negative_sum:.4f}"
+            )
+
+            st.write(
+                f"**Total SHAP contribution:** "
+                f"{shap_result['total_shap']:.4f}"
+            )
+
+            st.write(
+                f"**Classification threshold:** "
+                f"{CLASSIFICATION_THRESHOLD:.2%}"
+            )
+
+            if difference < 1e-5:
+
+                st.success(
+                    "✅ SHAP explanation is consistent "
+                    "with the model probability."
+                )
+
+            else:
+
+                st.warning(
+                    "⚠️ SHAP reconstructed probability "
+                    "differs from the model probability."
+                )
+
+
+    except requests.exceptions.RequestException:
 
         st.error(
             "❌ Unable to connect to the prediction API."
@@ -469,3 +665,12 @@ if predict:
             f"API endpoint: {API_URL}"
         )
 
+    except Exception as e:
+
+        st.error(
+            "❌ An unexpected error occurred."
+        )
+
+        st.caption(
+            str(e)
+        )
